@@ -11,7 +11,8 @@ public enum ResponseStatusEnum {
 
     SUCCESS("执行成功", 1),
     SERVER_ERROR("服务器错误", 2),
-    USER_CODE_ERROR("用户代码错误", 3);
+    USER_CODE_ERROR("用户代码错误", 3),
+    CODE_EXECUTION_TIMEOUT("执行代码超时", 4);
 
     private final String message;
 

@@ -12,6 +12,7 @@ import com.yanweiyi.micodecodesandbox.model.ExecuteMessage;
 import com.yanweiyi.micodecodesandbox.model.enums.ResponseStatusEnum;
 import com.yanweiyi.micodecodesandbox.service.DockerService;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Component;
 import org.springframework.util.StopWatch;
 
 import javax.annotation.Resource;
@@ -29,6 +30,7 @@ import java.util.concurrent.TimeUnit;
  * @author yanweiyi
  */
 @Slf4j
+@Component
 public class JavaDockerCodeSandbox {
 
     // 代码临时存储目录
@@ -216,7 +218,8 @@ public class JavaDockerCodeSandbox {
             memoryUsedList.add(executeMessage.getMemoryUsed());
 
             if (executeMessage.getTimeout()) { // 判断是否超时
-
+                executeCodeResponse.setStatus(ResponseStatusEnum.CODE_EXECUTION_TIMEOUT.getValue());
+                break;
             }
             String errorOutput = executeMessage.getErrorOutput();
             if (StrUtil.isNotBlank(errorOutput)) { // 如果有异常输出，设置状态为'用户代码错误'
