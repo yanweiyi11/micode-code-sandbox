@@ -9,10 +9,6 @@ import lombok.Data;
  */
 @Data
 public class ExecuteMessage {
-    // /**
-    //  * 退出状态码
-    //  */
-    // private Integer exitValue;
 
     /**
      * 程序输出的消息

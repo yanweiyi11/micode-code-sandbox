@@ -10,6 +10,11 @@ import java.util.List;
 @Data
 public class ExecuteCodeResponse {
 
+    /**
+     * 错误消息
+     */
+    private String errorMessage;
+
      /**
      * 程序输出结果
      */
