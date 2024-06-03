@@ -3,7 +3,8 @@ package com.yanweiyi.micodecodesandbox.controller;
 
 import com.yanweiyi.micodecodesandbox.model.ExecuteCodeRequest;
 import com.yanweiyi.micodecodesandbox.model.ExecuteCodeResponse;
-import com.yanweiyi.micodecodesandbox.sandbox.docker.JavaDockerCodeSandbox;
+import com.yanweiyi.micodecodesandbox.sandbox.docker.DockerCodeSandbox;
+import com.yanweiyi.micodecodesandbox.sandbox.docker.factory.DockerCodeSandboxFactory;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -26,8 +27,7 @@ public class MainController {
 
     private static final String AUTH_REQUEST_SECRET = "231510029";
 
-    @Resource
-    private JavaDockerCodeSandbox javaDockerCodeSandbox;
+    private DockerCodeSandbox dockerCodeSandbox;
 
     @GetMapping("/health")
     public String healthCheck() {
@@ -38,16 +38,25 @@ public class MainController {
     public ExecuteCodeResponse executeCode(@RequestBody ExecuteCodeRequest executeCodeRequest,
                                            HttpServletRequest request,
                                            HttpServletResponse response) {
-        // 基本的认证
-        String authHeader = request.getHeader(AUTH_REQUEST_HEADER);
-        if (!AUTH_REQUEST_SECRET.equals(authHeader)) {
-            response.setStatus(403);
+        // 请求参数校验
+        if (executeCodeRequest == null) {
+            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
             return null;
         }
-        if (executeCodeRequest == null) {
-            throw new RuntimeException("请求参数为空");
+        // 权限认证
+        String authHeader = request.getHeader(AUTH_REQUEST_HEADER);
+        if (!AUTH_REQUEST_SECRET.equals(authHeader)) {
+            response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+            return null;
         }
-        return javaDockerCodeSandbox.executeCode(executeCodeRequest);
+        // 根据语言选择代码沙箱
+        DockerCodeSandbox dockerCodeSandbox = DockerCodeSandboxFactory
+                .getCodeSandbox(executeCodeRequest.getLanguage());
+        if (dockerCodeSandbox == null) {
+            response.setStatus(HttpServletResponse.SC_NOT_FOUND);
+            return null;
+        }
+        return dockerCodeSandbox.executeCode(executeCodeRequest);
     }
 
 }

@@ -11,12 +11,12 @@ import lombok.Data;
 public class ExecuteMessage {
 
     /**
-     * 程序输出的消息
+     * 程序输出
      */
     private String output;
 
     /**
-     * 程序执行过程中的错误消息
+     * 程序执行过程中的错误输出
      */
     private String errorOutput;
 
@@ -28,11 +28,16 @@ public class ExecuteMessage {
     /**
      * 程序执行消耗的时间，单位为毫秒
      */
-    private Long executeTime;
+    private Long timeUsed;
 
     /**
      * 程序是否执行超时
      */
-    private Boolean timeout;
+    private Boolean isTimeout;
+
+    /**
+     * 程序是否内存溢出
+     */
+    private Boolean isMemoryOverflow;
 }
 
