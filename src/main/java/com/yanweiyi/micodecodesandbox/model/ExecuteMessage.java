@@ -21,12 +21,12 @@ public class ExecuteMessage {
     private String errorOutput;
 
     /**
-     * 程序执行消耗的内存量，单位为字节
+     * 程序执行消耗的内存量，单位为 kb
      */
     private Long memoryUsed;
 
     /**
-     * 程序执行消耗的时间，单位为毫秒
+     * 程序执行消耗的时间，单位为 ms
      */
     private Long timeUsed;
 

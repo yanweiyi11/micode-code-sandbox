@@ -1,5 +1,6 @@
 package com.yanweiyi.micodecodesandbox.sandbox.docker.impl;
 
+import cn.hutool.core.convert.Convert;
 import cn.hutool.core.util.ReUtil;
 import cn.hutool.core.util.StrUtil;
 import com.github.dockerjava.api.DockerClient;
@@ -24,9 +25,7 @@ import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -42,11 +41,11 @@ public class JavaDockerCodeSandbox implements DockerCodeSandbox {
     // 用户代码文件名
     private static final String USER_JAVA_CLASS_NAME = "Main";
 
-    // 超时控制时长（毫秒）
+    // 超时控制时长（ms）
     private static final long TIMEOUT_MILLISECONDS = 5000L;
 
-    // 最大内存限制（字节）
-    private static final long MAX_MEMORY_BYTES = 100 * 1024 * 1024;
+    // 最大内存限制（byte）
+    private static final long MAX_MEMORY_BYTE = 1073741824L; // 10 G
 
     // 当前项目目录
     private static final String PROJECT_DIRECTORY;
@@ -142,7 +141,7 @@ public class JavaDockerCodeSandbox implements DockerCodeSandbox {
             // 将编译好的文件上传到容器环境（通过将本地文件夹映射到docker的工作目录）
             hostConfig.setBinds(new Bind(userCodeDirectory, new Volume("/app")));
             // 设置内存限制
-            hostConfig.withMemory(MAX_MEMORY_BYTES);
+            hostConfig.withMemory(MAX_MEMORY_BYTE);
             // 限制用户不能往根目录写入
             hostConfig.withReadonlyRootfs(true);
             containerCommand.withHostConfig(hostConfig);
@@ -173,10 +172,11 @@ public class JavaDockerCodeSandbox implements DockerCodeSandbox {
                     public void onNext(Statistics statistics) {
                         Long currentMemoryUsage = statistics.getMemoryStats().getUsage();
                         if (currentMemoryUsage != null) {
+                            currentMemoryUsage = currentMemoryUsage / 1024; // byte 转换为 kb
                             Long maxMemoryUsage = executeMessage.getMemoryUsed();
                             executeMessage.setMemoryUsed(Math.max(currentMemoryUsage, maxMemoryUsage));
                             // 检查是否超过内存限制
-                            if (maxMemoryUsage > MAX_MEMORY_BYTES) {
+                            if (maxMemoryUsage > MAX_MEMORY_BYTE) {
                                 log.error("out of memory");
                                 executeMessage.setIsMemoryOverflow(true);
                             }
@@ -188,11 +188,13 @@ public class JavaDockerCodeSandbox implements DockerCodeSandbox {
 
                 // 创建命令对象
                 ExecCreateCmd execCreateCmd = dockerClient.execCreateCmd(containerId);
-                // 替换输入参数中可能存在的双引号，以避免命令在 shell 中执行时出错
-                String escapedInputArg = StringEscapeUtils.escapeJava(inputList.get(caseCount - 1));
-                // 拼接成完整的命令行字符串，使用管道将echo的输出重定向给java程序
-                String command = String.format("echo \"%s\" |  java -cp /app %s", escapedInputArg, USER_JAVA_CLASS_NAME);
-                // 之后，使用这个变量作为参数来执行命令
+                // 获取输入用例，假设它已经是适当的多行格式
+                String inputCases = inputList.get(caseCount - 1);
+                // 使用Base64编码，安全传输特殊字符，包括换行符
+                String base64EncodedInputCases = Base64.getEncoder().encodeToString(inputCases.getBytes(StandardCharsets.UTF_8));
+                // 拼接成完整的命令行字符串，调整 base64 的使用以适配 BusyBox，BusyBox 是一个集合了许多常用 UNIX 工具的轻量级软件
+                String command = String.format("echo \"%s\" | base64 -d | java -cp /app %s", base64EncodedInputCases, USER_JAVA_CLASS_NAME);
+                // 使用这个变量作为参数来执行命令
                 execCreateCmd.withCmd("sh", "-c", command);
 
                 // 开启获取 Docker 执行的输入和输出
@@ -211,18 +213,21 @@ public class JavaDockerCodeSandbox implements DockerCodeSandbox {
                 executeMessage.setIsTimeout(true);
                 // 记录执行到第几个用例
                 int finalCaseCount = caseCount;
+                StringBuilder outputBuilder = new StringBuilder();
+                StringBuilder errorBuilder = new StringBuilder();
                 ResultCallback.Adapter<Frame> execStartResultCallback = new ResultCallback.Adapter<Frame>() {
                     @Override
                     public void onNext(Frame frame) {
                         StreamType streamType = frame.getStreamType();
-                        String payload = StrUtil.removeSuffix(new String(frame.getPayload()), "\n"); // 移除末尾的\n
+                        String payload = new String(frame.getPayload());
 
                         // 根据流类型记录日志，避免重复记录相同的信息
                         if (StreamType.STDERR.equals(streamType)) {
-                            executeMessage.setErrorOutput(payload.trim());
+                            errorBuilder.append(payload);
                             log.error("case {}: execution error, output results: {}", finalCaseCount, payload);
+                            return;
                         } else {
-                            executeMessage.setOutput(payload.trim());
+                            outputBuilder.append(payload);
                             log.info("case {}: execution passed, output results: {}", finalCaseCount, payload);
                         }
                         super.onNext(frame);
@@ -256,6 +261,17 @@ public class JavaDockerCodeSandbox implements DockerCodeSandbox {
                     executeCodeResponse.setStatus(ExecuteInfoEnum.SYSTEM_ERROR.getValue()); // TODO 系统错误
                     return executeCodeResponse;
                 }
+                // 从 outputBuilder 中获取结果并设置
+                String output = outputBuilder.toString();
+                if (output.endsWith("\n")) {
+                    output = output.substring(0, output.length() - 1); // 去重最后一个\n
+                }
+                executeMessage.setOutput(output);
+
+                // 从 errorBuilder 中获取结果并设置
+                String errorOutput = errorBuilder.toString();
+                executeMessage.setErrorOutput(errorOutput);
+
                 // 设置代码执行时间
                 executeMessage.setTimeUsed(stopWatch.getLastTaskTimeMillis());
                 // 收集执行信息添加到列表中
