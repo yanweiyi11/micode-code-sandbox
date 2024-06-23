@@ -1,6 +1,5 @@
 package com.yanweiyi.micodecodesandbox.sandbox.docker.impl;
 
-import cn.hutool.core.convert.Convert;
 import cn.hutool.core.util.ReUtil;
 import cn.hutool.core.util.StrUtil;
 import com.github.dockerjava.api.DockerClient;
@@ -15,7 +14,6 @@ import com.yanweiyi.micodecodesandbox.sandbox.docker.DockerCodeSandbox;
 import com.yanweiyi.micodecodesandbox.service.DockerService;
 import com.yanweiyi.micodecodesandbox.utils.DockerClientUtil;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.text.StringEscapeUtils;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StopWatch;
 
@@ -25,7 +23,11 @@ import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Base64;
+import java.util.List;
+import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -313,18 +315,20 @@ public class JavaDockerCodeSandbox implements DockerCodeSandbox {
             executeCodeResponse.setMemoryUsedList(memoryUsedList);
             executeCodeResponse.setOutputList(outputList);
         } finally {
-            // 清理执行环境，移除容器和删除临时文件
-            if (StrUtil.isNotBlank(containerId)) {
-                log.info("docker container clear");
-                dockerClient.stopContainerCmd(containerId).exec();
-                dockerClient.removeContainerCmd(containerId).withForce(true).exec();
-                try {
-                    deleteDirectoryRecursively(directoryPath);
-                } catch (IOException e) {
-                    log.error("error cleaning files: {}", e.getMessage());
-                    executeCodeResponse.setStatus(ExecuteInfoEnum.SYSTEM_ERROR.getValue()); // TODO 系统错误
+            String finalContainerId = containerId;
+            CompletableFuture.runAsync(() -> {
+                // 清理执行环境，移除容器和删除临时文件
+                if (StrUtil.isNotBlank(finalContainerId)) {
+                    log.info("docker container clear");
+                    dockerClient.stopContainerCmd(finalContainerId).exec();
+                    dockerClient.removeContainerCmd(finalContainerId).withForce(true).exec();
+                    try {
+                        deleteDirectoryRecursively(directoryPath);
+                    } catch (IOException e) {
+                        log.error("error cleaning files: {}", e.getMessage());
+                    }
                 }
-            }
+            });
         }
         return executeCodeResponse;
     }
