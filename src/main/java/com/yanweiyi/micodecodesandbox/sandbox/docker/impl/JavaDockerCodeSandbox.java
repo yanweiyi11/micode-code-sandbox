@@ -14,7 +14,6 @@ import com.yanweiyi.micodecodesandbox.sandbox.docker.DockerCodeSandbox;
 import com.yanweiyi.micodecodesandbox.service.DockerService;
 import com.yanweiyi.micodecodesandbox.utils.DockerClientUtil;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Component;
 import org.springframework.util.StopWatch;
 
 import java.io.*;
@@ -34,7 +33,6 @@ import java.util.concurrent.TimeUnit;
  * @author yanweiyi
  */
 @Slf4j
-@Component
 public class JavaDockerCodeSandbox implements DockerCodeSandbox {
 
     // 代码临时存储目录

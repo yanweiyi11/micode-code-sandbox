@@ -5,19 +5,17 @@ import com.github.dockerjava.api.async.ResultCallback;
 import com.github.dockerjava.api.command.PullImageCmd;
 import com.github.dockerjava.api.model.Image;
 import com.github.dockerjava.api.model.PullResponseItem;
-import com.github.dockerjava.core.DockerClientBuilder;
 import com.yanweiyi.micodecodesandbox.utils.DockerClientUtil;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Service;
+import org.springframework.stereotype.Component;
 
 import javax.annotation.PostConstruct;
-import javax.annotation.Resource;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 
-@Service
 @Slf4j
+@Component
 public class DockerService {
 
     public static final String JAVA_IMAGE_NAME = "openjdk:8-alpine";

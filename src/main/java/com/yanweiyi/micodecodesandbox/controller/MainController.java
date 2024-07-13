@@ -10,7 +10,6 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
-import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
@@ -26,13 +25,6 @@ public class MainController {
     private static final String AUTH_REQUEST_HEADER = "nnnu";
 
     private static final String AUTH_REQUEST_SECRET = "231510029";
-
-    private DockerCodeSandbox dockerCodeSandbox;
-
-    @GetMapping("/health")
-    public String healthCheck() {
-        return "ok";
-    }
 
     @PostMapping("/executeCode")
     public ExecuteCodeResponse executeCode(@RequestBody ExecuteCodeRequest executeCodeRequest,
@@ -57,6 +49,11 @@ public class MainController {
             return null;
         }
         return dockerCodeSandbox.executeCode(executeCodeRequest);
+    }
+
+    @GetMapping("/health")
+    public String healthCheck() {
+        return "ok";
     }
 
 }
